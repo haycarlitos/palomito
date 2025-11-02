@@ -258,14 +258,19 @@ export default function PolicyDetails() {
             if (flightStatusResponse.ok) {
               const flightStatusData = await flightStatusResponse.json();
               console.log("Flight status response:", flightStatusData);
+              
+              // The API returns { flightStatus: { exists: true, ... } }
+              const flightStatus = flightStatusData.flightStatus;
+              const exists = flightStatus?.exists || flightStatusData.exists;
+              
               console.log("Response structure check:", {
-                exists: flightStatusData.exists,
-                hasFlightStatus: !!flightStatusData.flightStatus,
-                flightStatusKeys: flightStatusData.flightStatus ? Object.keys(flightStatusData.flightStatus) : []
+                exists,
+                hasFlightStatus: !!flightStatus,
+                flightStatusKeys: flightStatus ? Object.keys(flightStatus) : []
               });
               
-              if (flightStatusData.exists && flightStatusData.flightStatus) {
-                const flight = flightStatusData.flightStatus;
+              if (exists && flightStatus) {
+                const flight = flightStatus;
                 
                 // Extract airport codes and names
                 const originCode = flight.departure?.airportIata;
@@ -360,8 +365,9 @@ export default function PolicyDetails() {
                 });
               } else {
                 console.warn("Flight status data structure issue:", {
-                  exists: flightStatusData.exists,
-                  hasFlightStatus: !!flightStatusData.flightStatus
+                  exists,
+                  hasFlightStatus: !!flightStatus,
+                  flightStatusDataStructure: flightStatusData
                 });
               }
             } else {

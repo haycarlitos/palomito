@@ -99,7 +99,9 @@ export default function BuyPolicy() {
   const { switchChain } = useSwitchChain();
   // Force Scroll as the default chain (534352)
   const targetChainId = scroll.id;
-  const { data: walletClient } = useWalletClient({ chainId: targetChainId });
+  // Don't constrain walletClient to a specific chain - it should work on any chain
+  // We'll switch to the target chain when needed
+  const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient({ chainId: targetChainId });
   const router = useRouter();
   const { language } = useLanguage();
@@ -304,17 +306,21 @@ export default function BuyPolicy() {
   useEffect(() => {
     if (authenticated && ready && address && wallet && chainId !== targetChainId) {
       console.log("Auto-switching to Scroll chain", { current: chainId, target: targetChainId });
-      try {
-        switchChain({ chainId: targetChainId });
-      } catch (error) {
-        console.error("Error auto-switching to Scroll:", error);
-        // If switchChain fails, try using wallet.switchChain
-        if (wallet.switchChain) {
-          wallet.switchChain(targetChainId).catch((err) => {
-            console.error("Error switching chain via wallet:", err);
-          });
+      const switchToScroll = async () => {
+        try {
+          // Call switchChain - it may throw synchronously
+          switchChain({ chainId: targetChainId });
+        } catch (error) {
+          console.error("Error auto-switching to Scroll:", error);
+          // If switchChain fails, try using wallet.switchChain
+          if (wallet.switchChain) {
+            wallet.switchChain(targetChainId).catch((err) => {
+              console.error("Error switching chain via wallet:", err);
+            });
+          }
         }
-      }
+      };
+      switchToScroll();
     }
   }, [authenticated, ready, address, wallet, chainId, targetChainId, switchChain]);
 
@@ -484,11 +490,60 @@ export default function BuyPolicy() {
       return;
     }
 
+    // Ensure wallet is set as active
+    if (wallets.length > 0 && wallets[0]) {
+      try {
+        await setActiveWallet(wallets[0]);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (error) {
+        console.warn("Error setting active wallet:", error);
+      }
+    }
+
+    // FORCE switch to Scroll chain before proceeding
+    const walletChainId = typeof wallet.chainId === 'string' && wallet.chainId.startsWith('eip155:')
+      ? parseInt(wallet.chainId.split(':')[1])
+      : wallet.chainId;
+    
+    if (chainId !== targetChainId || walletChainId !== targetChainId) {
+      console.log("Force switching to Scroll chain before approval", { current: chainId || walletChainId, target: targetChainId });
+      try {
+        if (switchChain) {
+          await switchChain({ chainId: targetChainId });
+        } else if (wallet.switchChain) {
+          await wallet.switchChain(targetChainId);
+        } else {
+          throw new Error("No method available to switch chain");
+        }
+        // Wait for chain switch to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Verify we're on Scroll now
+        const newChainId = typeof wallet.chainId === 'string' && wallet.chainId.startsWith('eip155:')
+          ? parseInt(wallet.chainId.split(':')[1])
+          : wallet.chainId;
+        if (newChainId !== targetChainId) {
+          throw new Error(`Failed to switch to Scroll chain. Still on chain ${newChainId}`);
+        }
+        console.log("Successfully switched to Scroll chain");
+      } catch (switchError: any) {
+        console.error("Error switching to Scroll chain:", switchError);
+        showErrorToast(validLanguage === "es" 
+          ? "Error al cambiar a la red Scroll. Por favor cambia manualmente a Scroll (Chain ID: 534352)." 
+          : "Error switching to Scroll network. Please switch manually to Scroll (Chain ID: 534352).");
+        return;
+      }
+    }
+
     if (!walletClient) {
-      const errorMsg = validLanguage === "es" ? "Cliente de billetera no disponible. Por favor intenta recargar la página." : "Wallet client not available. Please try refreshing the page.";
-      console.error("Missing walletClient");
-      showErrorToast(errorMsg);
-      return;
+      // Wait a moment for wallet client to initialize after chain switch
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!walletClient) {
+        const errorMsg = validLanguage === "es" ? "Cliente de billetera no disponible. Por favor intenta recargar la página." : "Wallet client not available. Please try refreshing the page.";
+        console.error("Missing walletClient after wait");
+        showErrorToast(errorMsg);
+        return;
+      }
     }
 
     if (!publicClient) {
@@ -508,43 +563,7 @@ export default function BuyPolicy() {
     setIsProcessingPayment(true);
     try {
       console.log("Starting approval process", { premiumInUsdc: premium, tokenAddress, currentChainId: chainId, targetChainId });
-      // Always switch to Scroll (targetChainId) if not already on it
-      // wallet.chainId might be in format "eip155:42161" or just a number
-      const walletChainId = typeof wallet.chainId === 'string' && wallet.chainId.startsWith('eip155:')
-        ? parseInt(wallet.chainId.split(':')[1])
-        : wallet.chainId;
-      
-      if (chainId !== targetChainId || walletChainId !== targetChainId) {
-        console.log("Switching to Scroll chain", { current: chainId || walletChainId, target: targetChainId });
-        try {
-          // Try using wagmi switchChain first
-          if (switchChain) {
-            await switchChain({ chainId: targetChainId });
-          } else if (wallet.switchChain) {
-            await wallet.switchChain(targetChainId);
-          } else {
-            throw new Error("No method available to switch chain");
-          }
-          // Wait a bit for chain switch to complete
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          // Verify we're on the right chain now
-          const newChainId = typeof wallet.chainId === 'string' && wallet.chainId.startsWith('eip155:')
-            ? parseInt(wallet.chainId.split(':')[1])
-            : wallet.chainId;
-          if (newChainId !== targetChainId) {
-            throw new Error(`Failed to switch to Scroll chain. Still on chain ${newChainId}`);
-          }
-        } catch (switchError: any) {
-          console.error("Error switching chain:", switchError);
-          showErrorToast(validLanguage === "es" 
-            ? "Error al cambiar a la red Scroll. Por favor cambia manualmente."
-            : "Error switching to Scroll network. Please switch manually.");
-          setIsProcessingPayment(false);
-          return;
-        }
-      } else {
-        console.log("Already on Scroll chain", { chainId, walletChainId });
-      }
+      // Note: Chain switch was already handled above, so we should be on Scroll now
 
       // Ensure decimals is a number (usdcDecimals might be BigInt)
       let decimals: number;
@@ -636,13 +655,13 @@ export default function BuyPolicy() {
       if (!walletClient) {
         throw new Error("Wallet client not available");
       }
-      const hash = await (walletClient as any).writeContract({
+      const hash = await walletClient.writeContract({
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: "approve",
         args: [INSURANCE_CONTRACT_ADDRESS, premiumInWei],
         account: address,
-        gasLimit: gasLimit,
+        gas: gasLimit,
         maxFeePerGas: gasPrice * BigInt(2),
         maxPriorityFeePerGas: gasPrice / BigInt(10),
       });
@@ -699,6 +718,75 @@ export default function BuyPolicy() {
       return;
     }
 
+    // Ensure wallet is set as active before proceeding
+    if (wallets.length > 0 && wallets[0]) {
+      try {
+        await setActiveWallet(wallets[0]);
+        // Small delay to let the wallet client initialize
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.warn("Error setting active wallet:", error);
+      }
+    }
+
+    // FORCE switch to Scroll chain FIRST, before checking wallet client
+    const walletChainId = typeof wallet.chainId === 'string' && wallet.chainId.startsWith('eip155:')
+      ? parseInt(wallet.chainId.split(':')[1])
+      : wallet.chainId;
+    
+    if (chainId !== targetChainId || walletChainId !== targetChainId) {
+      console.log("Force switching to Scroll chain before purchase", { current: chainId || walletChainId, target: targetChainId });
+      try {
+        if (switchChain) {
+          await switchChain({ chainId: targetChainId });
+        } else if (wallet.switchChain) {
+          await wallet.switchChain(targetChainId);
+        } else {
+          throw new Error("No method available to switch chain");
+        }
+        // Wait for chain switch to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Verify we're on Scroll now
+        const newChainId = typeof wallet.chainId === 'string' && wallet.chainId.startsWith('eip155:')
+          ? parseInt(wallet.chainId.split(':')[1])
+          : wallet.chainId;
+        if (newChainId !== targetChainId) {
+          throw new Error(`Failed to switch to Scroll chain. Still on chain ${newChainId}`);
+        }
+        console.log("Successfully switched to Scroll chain");
+      } catch (switchError: any) {
+        console.error("Error switching to Scroll chain:", switchError);
+        showErrorToast(validLanguage === "es" 
+          ? "Error al cambiar a la red Scroll. Por favor cambia manualmente a Scroll (Chain ID: 534352)." 
+          : "Error switching to Scroll network. Please switch manually to Scroll (Chain ID: 534352).");
+        return;
+      }
+    }
+
+    // Check wallet client availability after chain switch
+    if (!walletClient) {
+      // Wait a moment for wallet client to initialize after chain switch
+      console.log("Wallet client not immediately available, waiting after chain switch...", {
+        wallet: !!wallet,
+        address: !!address,
+        chainId,
+        targetChainId,
+        walletsLength: wallets.length
+      });
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // If still not available after wait, show helpful error
+      if (!walletClient) {
+        showErrorToast(
+          validLanguage === "es" 
+            ? "Cliente de billetera no disponible. Por favor verifica que tu billetera esté conectada y recarga la página." 
+            : "Wallet client not available. Please ensure your wallet is connected and refresh the page."
+        );
+        return;
+      }
+    }
+
     if (!walletClient || !publicClient) {
       showErrorToast(validLanguage === "es" ? "Cliente de billetera no disponible" : "Wallet client not available");
       return;
@@ -706,29 +794,6 @@ export default function BuyPolicy() {
 
     setIsProcessingPayment(true);
     try {
-      // Always switch to Scroll (targetChainId) if not already on it
-      const walletChainId = typeof wallet.chainId === 'string' && wallet.chainId.startsWith('eip155:')
-        ? parseInt(wallet.chainId.split(':')[1])
-        : wallet.chainId;
-      
-      if (chainId !== targetChainId || walletChainId !== targetChainId) {
-        console.log("Switching to Scroll chain for purchase", { current: chainId || walletChainId, target: targetChainId });
-        try {
-          if (switchChain) {
-            await switchChain({ chainId: targetChainId });
-          } else if (wallet.switchChain) {
-            await wallet.switchChain(targetChainId);
-          }
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        } catch (switchError: any) {
-          console.error("Error switching chain:", switchError);
-          showErrorToast(validLanguage === "es" 
-            ? "Error al cambiar a la red Scroll. Por favor cambia manualmente."
-            : "Error switching to Scroll network. Please switch manually.");
-          setIsProcessingPayment(false);
-          return;
-        }
-      }
 
       // Generate flight ID and convert expiration date
       const flightIdBigInt = BigInt(
@@ -907,13 +972,13 @@ export default function BuyPolicy() {
       if (!walletClient) {
         throw new Error("Wallet client not available");
       }
-      const hash = await (walletClient as any).writeContract({
+      const hash = await walletClient.writeContract({
         address: INSURANCE_CONTRACT_ADDRESS,
         abi: INSURANCE_CONTRACT_ABI,
         functionName: "buyPolicy",
         args: [params],
         account: address,
-        gasLimit: gasLimit,
+        gas: gasLimit,
         maxFeePerGas: gasPrice * BigInt(2),
         maxPriorityFeePerGas: gasPrice / BigInt(10),
       });
