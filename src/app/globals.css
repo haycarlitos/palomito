@@ -1,0 +1,686 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-abc-favorit: var(--font-abc-favorit);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  .button-primary {
+    @apply bg-amber-600 hover:bg-amber-700 focus:bg-amber-700 active:bg-amber-800
+           disabled:bg-gray-300 disabled:cursor-not-allowed
+           text-white font-medium
+           px-4 py-2 rounded-md
+           border border-transparent
+           transition-colors duration-200 ease-in-out
+           focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2
+           inline-flex items-center justify-center
+           text-sm leading-5 cursor-pointer;
+  }
+
+  .button-outline {
+    @apply flex flex-row items-center
+           px-4 py-2 gap-1 cursor-pointer
+           h-9 rounded-full
+           bg-transparent border border-amber-600
+           text-amber-700 font-medium text-sm leading-tight
+           hover:bg-amber-600 hover:text-white
+           focus:bg-amber-600 focus:text-white
+           active:bg-amber-700
+           focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2
+           transition-all duration-200 ease-in-out
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .button {
+    @apply flex flex-row items-center
+           px-3 py-2 gap-3 cursor-pointer
+           bg-white border border-amber-200 rounded-xl
+           text-stone-800 font-normal text-base leading-6
+           hover:bg-amber-50 hover:border-amber-300
+           focus:bg-amber-50 focus:border-amber-300
+           active:bg-amber-100
+           focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2
+           transition-all duration-200 ease-in-out
+           disabled:opacity-50 disabled:cursor-not-allowed
+           box-border;
+  }
+
+  .text-primary {
+    @apply text-amber-700;
+  }
+  .border-primary {
+    @apply border-amber-600;
+  }
+
+  .loader-overlay {
+    @apply absolute left-0 top-0 z-10 flex h-full w-full items-center justify-center bg-white/30;
+    animation: fade-in 150ms ease-in forwards;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 3s ease-in-out infinite;
+}
+
+@keyframes cloud-1 {
+  0% {
+    transform: translateX(-200px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 200px));
+  }
+}
+
+@keyframes cloud-2 {
+  0% {
+    transform: translateX(-250px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 250px));
+  }
+}
+
+@keyframes cloud-3 {
+  0% {
+    transform: translateX(-180px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 180px));
+  }
+}
+
+@keyframes cloud-4 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-220px);
+  }
+}
+
+@keyframes cloud-5 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-200px);
+  }
+}
+
+@keyframes cloud-6 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-240px);
+  }
+}
+
+@keyframes cloud-7 {
+  0% {
+    transform: translateX(-200px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 200px));
+  }
+}
+
+@keyframes cloud-8 {
+  0% {
+    transform: translateX(-230px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 230px));
+  }
+}
+
+@keyframes cloud-9 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-210px);
+  }
+}
+
+@keyframes cloud-10 {
+  0% {
+    transform: translateX(-260px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 260px));
+  }
+}
+
+@keyframes cloud-11 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-190px);
+  }
+}
+
+@keyframes cloud-12 {
+  0% {
+    transform: translateX(-220px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 220px));
+  }
+}
+
+@keyframes cloud-13 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-240px);
+  }
+}
+
+@keyframes cloud-14 {
+  0% {
+    transform: translateX(-200px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 200px));
+  }
+}
+
+@keyframes cloud-15 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-250px);
+  }
+}
+
+@keyframes cloud-16 {
+  0% {
+    transform: translateX(-180px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 180px));
+  }
+}
+
+@keyframes cloud-17 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-220px);
+  }
+}
+
+@keyframes cloud-18 {
+  0% {
+    transform: translateX(-230px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 230px));
+  }
+}
+
+@keyframes cloud-19 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-200px);
+  }
+}
+
+@keyframes cloud-20 {
+  0% {
+    transform: translateX(-240px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 240px));
+  }
+}
+
+.animate-cloud-1 {
+  animation: cloud-1 60s linear infinite;
+}
+
+.animate-cloud-2 {
+  animation: cloud-2 80s linear infinite;
+  animation-delay: -10s;
+}
+
+.animate-cloud-3 {
+  animation: cloud-3 70s linear infinite;
+  animation-delay: -20s;
+}
+
+.animate-cloud-4 {
+  animation: cloud-4 65s linear infinite;
+  animation-delay: -5s;
+}
+
+.animate-cloud-5 {
+  animation: cloud-5 75s linear infinite;
+  animation-delay: -15s;
+}
+
+.animate-cloud-6 {
+  animation: cloud-6 85s linear infinite;
+  animation-delay: -25s;
+}
+
+.animate-cloud-7 {
+  animation: cloud-7 72s linear infinite;
+  animation-delay: -8s;
+}
+
+.animate-cloud-8 {
+  animation: cloud-8 68s linear infinite;
+  animation-delay: -12s;
+}
+
+.animate-cloud-9 {
+  animation: cloud-9 78s linear infinite;
+  animation-delay: -18s;
+}
+
+.animate-cloud-10 {
+  animation: cloud-10 64s linear infinite;
+  animation-delay: -22s;
+}
+
+.animate-cloud-11 {
+  animation: cloud-11 76s linear infinite;
+  animation-delay: -7s;
+}
+
+.animate-cloud-12 {
+  animation: cloud-12 70s linear infinite;
+  animation-delay: -14s;
+}
+
+.animate-cloud-13 {
+  animation: cloud-13 82s linear infinite;
+  animation-delay: -19s;
+}
+
+.animate-cloud-14 {
+  animation: cloud-14 66s linear infinite;
+  animation-delay: -11s;
+}
+
+.animate-cloud-15 {
+  animation: cloud-15 74s linear infinite;
+  animation-delay: -16s;
+}
+
+.animate-cloud-16 {
+  animation: cloud-16 71s linear infinite;
+  animation-delay: -9s;
+}
+
+.animate-cloud-17 {
+  animation: cloud-17 79s linear infinite;
+  animation-delay: -21s;
+}
+
+.animate-cloud-18 {
+  animation: cloud-18 67s linear infinite;
+  animation-delay: -13s;
+}
+
+.animate-cloud-19 {
+  animation: cloud-19 73s linear infinite;
+  animation-delay: -17s;
+}
+
+.animate-cloud-20 {
+  animation: cloud-20 81s linear infinite;
+  animation-delay: -23s;
+}
+
+@keyframes cloud-21 {
+  0% {
+    transform: translateX(-200px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 200px));
+  }
+}
+
+@keyframes cloud-22 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-230px);
+  }
+}
+
+@keyframes cloud-23 {
+  0% {
+    transform: translateX(-190px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 190px));
+  }
+}
+
+@keyframes cloud-24 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-220px);
+  }
+}
+
+@keyframes cloud-25 {
+  0% {
+    transform: translateX(-210px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 210px));
+  }
+}
+
+@keyframes cloud-26 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-250px);
+  }
+}
+
+@keyframes cloud-27 {
+  0% {
+    transform: translateX(-180px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 180px));
+  }
+}
+
+@keyframes cloud-28 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-240px);
+  }
+}
+
+@keyframes cloud-29 {
+  0% {
+    transform: translateX(-200px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 200px));
+  }
+}
+
+@keyframes cloud-30 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-230px);
+  }
+}
+
+@keyframes cloud-31 {
+  0% {
+    transform: translateX(-210px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 210px));
+  }
+}
+
+@keyframes cloud-32 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-190px);
+  }
+}
+
+@keyframes cloud-33 {
+  0% {
+    transform: translateX(-220px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 220px));
+  }
+}
+
+@keyframes cloud-34 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-200px);
+  }
+}
+
+@keyframes cloud-35 {
+  0% {
+    transform: translateX(-240px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 240px));
+  }
+}
+
+@keyframes cloud-36 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-180px);
+  }
+}
+
+@keyframes cloud-37 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-220px);
+  }
+}
+
+@keyframes cloud-38 {
+  0% {
+    transform: translateX(-210px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 210px));
+  }
+}
+
+@keyframes cloud-39 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-250px);
+  }
+}
+
+@keyframes cloud-40 {
+  0% {
+    transform: translateX(-190px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 190px));
+  }
+}
+
+@keyframes cloud-41 {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-230px);
+  }
+}
+
+@keyframes cloud-42 {
+  0% {
+    transform: translateX(-200px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 200px));
+  }
+}
+
+.animate-cloud-21 {
+  animation: cloud-21 69s linear infinite;
+  animation-delay: -4s;
+}
+
+.animate-cloud-22 {
+  animation: cloud-22 83s linear infinite;
+  animation-delay: -6s;
+}
+
+.animate-cloud-23 {
+  animation: cloud-23 65s linear infinite;
+  animation-delay: -24s;
+}
+
+.animate-cloud-24 {
+  animation: cloud-24 77s linear infinite;
+  animation-delay: -2s;
+}
+
+.animate-cloud-25 {
+  animation: cloud-25 71s linear infinite;
+  animation-delay: -26s;
+}
+
+.animate-cloud-26 {
+  animation: cloud-26 86s linear infinite;
+  animation-delay: -3s;
+}
+
+.animate-cloud-27 {
+  animation: cloud-27 63s linear infinite;
+  animation-delay: -27s;
+}
+
+.animate-cloud-28 {
+  animation: cloud-28 80s linear infinite;
+  animation-delay: -28s;
+}
+
+.animate-cloud-29 {
+  animation: cloud-29 68s linear infinite;
+  animation-delay: -29s;
+}
+
+.animate-cloud-30 {
+  animation: cloud-30 75s linear infinite;
+  animation-delay: -30s;
+}
+
+.animate-cloud-31 {
+  animation: cloud-31 72s linear infinite;
+  animation-delay: -31s;
+}
+
+.animate-cloud-32 {
+  animation: cloud-32 84s linear infinite;
+  animation-delay: -32s;
+}
+
+.animate-cloud-33 {
+  animation: cloud-33 70s linear infinite;
+  animation-delay: -33s;
+}
+
+.animate-cloud-34 {
+  animation: cloud-34 67s linear infinite;
+  animation-delay: -34s;
+}
+
+.animate-cloud-35 {
+  animation: cloud-35 79s linear infinite;
+  animation-delay: -35s;
+}
+
+.animate-cloud-36 {
+  animation: cloud-36 73s linear infinite;
+  animation-delay: -36s;
+}
+
+.animate-cloud-37 {
+  animation: cloud-37 81s linear infinite;
+  animation-delay: -37s;
+}
+
+.animate-cloud-38 {
+  animation: cloud-38 66s linear infinite;
+  animation-delay: -38s;
+}
+
+.animate-cloud-39 {
+  animation: cloud-39 85s linear infinite;
+  animation-delay: -39s;
+}
+
+.animate-cloud-40 {
+  animation: cloud-40 62s linear infinite;
+  animation-delay: -40s;
+}
+
+.animate-cloud-41 {
+  animation: cloud-41 78s linear infinite;
+  animation-delay: -41s;
+}
+
+.animate-cloud-42 {
+  animation: cloud-42 74s linear infinite;
+  animation-delay: -42s;
+}
+
+.cloud-shadow {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
