@@ -130,69 +130,262 @@ export default function PolicyDetails() {
       return;
     }
 
-    try {
-      // Convert contract policy to our format
-      const cp = onchainPolicyData as any;
-      const ticketPrice = Number(formatUnits(cp.ticketPrice || BigInt(0), 6)); // USDC has 6 decimals
-      const premium = Number(formatUnits(cp.premiumPaid || BigInt(0), 6));
-      const expirationTimestamp = Number(cp.expiration || BigInt(0));
-      const expirationDate = expirationTimestamp > 0 
-        ? new Date(expirationTimestamp * 1000).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
-      
-      // Determine status
-      let status: "active" | "claimed" | "expired" = "active";
-      if (cp.claimed) {
-        status = "claimed";
-      } else if (expirationTimestamp > 0 && expirationTimestamp < Date.now() / 1000) {
-        status = "expired";
-      }
+    const processOnchainPolicy = async () => {
+      try {
+        setIsLoading(true);
+        
+        // getPolicy returns a tuple: [user, flightId, airline, flightNumber, flightDate, departureAirportIata, ticketPrice, premiumPaid, coverageAmount, expiration, active, claimed]
+        const policyDataTuple = onchainPolicyData as unknown as any[];
+        
+        // Extract data from tuple
+        const airline = policyDataTuple[2];
+        const flightNumber = policyDataTuple[3];
+        const flightDate = policyDataTuple[4];
+        const departureAirportIata = policyDataTuple[5];
+        const ticketPrice = policyDataTuple[6];
+        const premiumPaid = policyDataTuple[7];
+        const coverageAmount = policyDataTuple[8];
+        const expiration = policyDataTuple[9];
+        const claimed = policyDataTuple[11];
 
-      // Estimate purchase date: if expiration is in the future, estimate it's at least 1 day before
-      // Otherwise, use today's date as a fallback (contract doesn't store purchase date)
-      let purchaseDate: string;
-      if (expirationTimestamp > 0) {
-        const expirationDateObj = new Date(expirationTimestamp * 1000);
-        const now = new Date();
-        // If expiration is in the future, estimate purchase was at least 1 day before
-        if (expirationDateObj > now) {
-          const estimatedPurchaseDate = new Date(expirationDateObj);
-          estimatedPurchaseDate.setDate(estimatedPurchaseDate.getDate() - 1);
-          purchaseDate = estimatedPurchaseDate.toISOString().split('T')[0];
-        } else {
-          // If already expired, use a date before expiration
-          const estimatedPurchaseDate = new Date(expirationDateObj);
-          estimatedPurchaseDate.setDate(estimatedPurchaseDate.getDate() - 7); // 1 week before expiration
-          purchaseDate = estimatedPurchaseDate.toISOString().split('T')[0];
+        // Convert BigInt to numbers
+        const ticketPriceNum = Number(formatUnits(ticketPrice || BigInt(0), 6)); // USDC has 6 decimals
+        const premiumNum = Number(formatUnits(premiumPaid || BigInt(0), 6));
+        const coverageNum = Number(formatUnits(coverageAmount || BigInt(0), 6));
+        const expirationTimestamp = Number(expiration || BigInt(0));
+        const flightDateTimestamp = Number(flightDate || BigInt(0));
+        
+        const expirationDate = expirationTimestamp > 0 
+          ? new Date(expirationTimestamp * 1000).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0];
+        
+        const flightDateStr = flightDateTimestamp > 0
+          ? new Date(flightDateTimestamp * 1000).toISOString().split('T')[0]
+          : expirationDate;
+        
+        // Determine status
+        let status: "active" | "claimed" | "expired" = "active";
+        if (claimed) {
+          status = "claimed";
+        } else if (expirationTimestamp > 0 && expirationTimestamp < Date.now() / 1000) {
+          status = "expired";
         }
-      } else {
-        // Fallback to today if no expiration date
-        purchaseDate = new Date().toISOString().split('T')[0];
+
+        // Estimate purchase date: if expiration is in the future, estimate it's at least 1 day before
+        let purchaseDate: string;
+        if (expirationTimestamp > 0) {
+          const expirationDateObj = new Date(expirationTimestamp * 1000);
+          const now = new Date();
+          if (expirationDateObj > now) {
+            const estimatedPurchaseDate = new Date(expirationDateObj);
+            estimatedPurchaseDate.setDate(estimatedPurchaseDate.getDate() - 1);
+            purchaseDate = estimatedPurchaseDate.toISOString().split('T')[0];
+          } else {
+            const estimatedPurchaseDate = new Date(expirationDateObj);
+            estimatedPurchaseDate.setDate(estimatedPurchaseDate.getDate() - 7);
+            purchaseDate = estimatedPurchaseDate.toISOString().split('T')[0];
+          }
+        } else {
+          purchaseDate = new Date().toISOString().split('T')[0];
+        }
+
+        // Decode bytes32 to string for airline and flight number
+        const hexToString = (hex: string): string => {
+          if (!hex || typeof hex !== 'string') return '';
+          const hexStr = hex.startsWith('0x') ? hex.slice(2) : hex;
+          const bytes = new Uint8Array(hexStr.length / 2);
+          for (let i = 0; i < hexStr.length; i += 2) {
+            bytes[i / 2] = parseInt(hexStr.substr(i, 2), 16);
+          }
+          return new TextDecoder('utf-8').decode(bytes).replace(/\0/g, '').trim();
+        };
+
+        // Decode bytes3 to string for departure airport
+        const bytes3ToString = (hex: string): string => {
+          if (!hex || typeof hex !== 'string') return '';
+          const hexStr = hex.startsWith('0x') ? hex.slice(2) : hex;
+          const bytes = new Uint8Array(hexStr.length / 2);
+          for (let i = 0; i < hexStr.length; i += 2) {
+            bytes[i / 2] = parseInt(hexStr.substr(i, 2), 16);
+          }
+          return new TextDecoder('utf-8').decode(bytes).replace(/\0/g, '').trim();
+        };
+
+        let airlineStr = "";
+        let flightNumberStr = "";
+        let departureAirportStr = "";
+        
+        try {
+          if (airline) {
+            airlineStr = typeof airline === 'string' ? hexToString(airline) : '';
+          }
+          if (flightNumber) {
+            flightNumberStr = typeof flightNumber === 'string' ? hexToString(flightNumber) : '';
+          }
+          if (departureAirportIata) {
+            departureAirportStr = typeof departureAirportIata === 'string' ? bytes3ToString(departureAirportIata) : '';
+          }
+        } catch (e) {
+          console.warn("Error decoding contract data:", e);
+        }
+
+        // Build initial policy data
+        let policyData: PolicyData = {
+          id: policyId,
+          airline: airlineStr,
+          flightNumber: flightNumberStr,
+          date: flightDateStr,
+          departureAirport: departureAirportStr,
+          ticketPrice: ticketPriceNum,
+          premium: premiumNum,
+          originalPremium: premiumNum,
+          discountAmount: 0,
+          coverage: coverageNum,
+          status,
+          expirationDate,
+          purchaseDate,
+          transactionHash: "",
+        };
+
+        // If we have airline and flight number, fetch flight details
+        if (airlineStr && flightNumberStr && flightDateStr) {
+          try {
+            console.log("Fetching flight status for:", { airlineStr, flightNumberStr, flightDateStr, departureAirportStr });
+            const flightStatusResponse = await fetch(
+              `/api/flight-status?airline=${encodeURIComponent(airlineStr)}&flightNumber=${encodeURIComponent(flightNumberStr)}&date=${flightDateStr}${departureAirportStr ? `&departureAirport=${encodeURIComponent(departureAirportStr)}` : ''}`
+            );
+            
+            if (flightStatusResponse.ok) {
+              const flightStatusData = await flightStatusResponse.json();
+              console.log("Flight status response:", flightStatusData);
+              console.log("Response structure check:", {
+                exists: flightStatusData.exists,
+                hasFlightStatus: !!flightStatusData.flightStatus,
+                flightStatusKeys: flightStatusData.flightStatus ? Object.keys(flightStatusData.flightStatus) : []
+              });
+              
+              if (flightStatusData.exists && flightStatusData.flightStatus) {
+                const flight = flightStatusData.flightStatus;
+                
+                // Extract airport codes and names
+                const originCode = flight.departure?.airportIata;
+                const destinationCode = flight.arrival?.airportIata;
+                const originName = flight.departure?.airport;
+                const destinationName = flight.arrival?.airport;
+                
+                console.log("Extracted flight data:", {
+                  originCode,
+                  destinationCode,
+                  originName,
+                  destinationName,
+                  departureUtc: flight.departure?.scheduledTimeUtc,
+                  arrivalUtc: flight.arrival?.scheduledTimeUtc,
+                });
+                
+                // Format time from UTC string if scheduledTimeLocal is null
+                const formatTimeFromUtc = (utcString: string | null | undefined): string | null => {
+                  if (!utcString) return null;
+                  try {
+                    // Format: "2025-11-03 06:59Z" -> "06:59"
+                    // Also handle: "2025-11-03T06:59:00Z" or "2025-11-03T06:59Z"
+                    const timeMatch = utcString.match(/(\d{2}):(\d{2})/);
+                    if (timeMatch) {
+                      return `${timeMatch[1]}:${timeMatch[2]}`;
+                    }
+                  } catch (e) {
+                    console.warn("Error parsing UTC time:", e);
+                  }
+                  return null;
+                };
+                
+                // Get departure time - prefer scheduledTimeLocal, fallback to UTC
+                let depTime: string | null = null;
+                if (flight.departure?.scheduledTimeLocal) {
+                  depTime = flight.departure.scheduledTimeLocal.trim();
+                } else if (flight.departure?.scheduledTimeUtc) {
+                  depTime = formatTimeFromUtc(flight.departure.scheduledTimeUtc);
+                  console.log("Formatted departure time from UTC:", flight.departure.scheduledTimeUtc, "->", depTime);
+                }
+                
+                // Get arrival time - prefer scheduledTimeLocal, fallback to UTC
+                let arrTime: string | null = null;
+                if (flight.arrival?.scheduledTimeLocal) {
+                  arrTime = flight.arrival.scheduledTimeLocal.trim();
+                } else if (flight.arrival?.scheduledTimeUtc) {
+                  arrTime = formatTimeFromUtc(flight.arrival.scheduledTimeUtc);
+                  console.log("Formatted arrival time from UTC:", flight.arrival.scheduledTimeUtc, "->", arrTime);
+                }
+                
+                // Build updated policy data - use airportIata codes directly
+                const finalOrigin = originCode || originName || policyData.origin || policyData.departureAirport || '';
+                const finalDestination = destinationCode || destinationName || '';
+                
+                // Convert times to strings, or undefined if null
+                const finalDepTime = depTime || undefined;
+                const finalArrTime = arrTime || undefined;
+                
+                console.log("Before update:", {
+                  currentOrigin: policyData.origin,
+                  currentDestination: policyData.destination,
+                  finalOrigin,
+                  finalDestination,
+                  finalDepTime,
+                  finalArrTime
+                });
+                
+                policyData = {
+                  ...policyData,
+                  origin: finalOrigin,
+                  destination: finalDestination,
+                  departureTime: finalDepTime,
+                  arrivalTime: finalArrTime,
+                  flightStatus: flight.status || flightStatusData.status || policyData.flightStatus || undefined,
+                };
+                
+                console.log("Enhanced policy data:", {
+                  origin: policyData.origin,
+                  destination: policyData.destination,
+                  departureTime: policyData.departureTime,
+                  arrivalTime: policyData.arrivalTime,
+                  extracted: {
+                    originCode,
+                    destinationCode,
+                    depTime,
+                    arrTime,
+                  },
+                  flight: {
+                    departure: flight.departure,
+                    arrival: flight.arrival,
+                  }
+                });
+              } else {
+                console.warn("Flight status data structure issue:", {
+                  exists: flightStatusData.exists,
+                  hasFlightStatus: !!flightStatusData.flightStatus
+                });
+              }
+            } else {
+              console.warn("Flight status API returned non-OK status:", flightStatusResponse.status);
+            }
+          } catch (e) {
+            console.warn("Error fetching flight status:", e);
+            // Continue with basic policy data even if flight status fails
+          }
+        } else {
+          console.warn("Missing flight info for API call:", { airlineStr, flightNumberStr, flightDateStr });
+        }
+
+        console.log("Final policyData before setState:", policyData);
+        setPolicy(policyData);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error processing onchain policy:", error);
+        setError("Error loading policy from contract");
+        setIsLoading(false);
       }
+    };
 
-      const policyData: PolicyData = {
-        id: policyId,
-        airline: "", // Not available from contract
-        flightNumber: "", // Not available from contract
-        date: expirationDate,
-        ticketPrice,
-        premium,
-        originalPremium: premium,
-        discountAmount: 0,
-        status,
-        expirationDate,
-        purchaseDate,
-        transactionHash: "",
-        userAddress: address,
-      };
-
-      setPolicy(policyData);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error processing onchain policy:", error);
-      setError("Error loading policy from contract");
-      setIsLoading(false);
-    }
+    processOnchainPolicy();
   }, [isOnchainPolicy, onchainPolicyData, address, policyId]);
 
   // Show loading state while checking authentication or if not ready
@@ -428,11 +621,11 @@ export default function PolicyDetails() {
                       <p className="text-sm font-medium text-stone-600 mb-1">Código utilizado:</p>
                       <p className="text-lg font-bold text-green-700">{policy.promoCode}</p>
                     </div>
-                    {policy.discountAmount > 0 && (
+                    {(policy.discountAmount ?? 0) > 0 && (
                       <div className="text-right">
                         <p className="text-sm font-medium text-stone-600 mb-1">Descuento aplicado:</p>
                         <p className="text-lg font-bold text-green-600">
-                          -${policy.discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                          -${(policy.discountAmount ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                         </p>
                       </div>
                     )}

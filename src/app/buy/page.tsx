@@ -304,7 +304,9 @@ export default function BuyPolicy() {
   useEffect(() => {
     if (authenticated && ready && address && wallet && chainId !== targetChainId) {
       console.log("Auto-switching to Scroll chain", { current: chainId, target: targetChainId });
-      switchChain({ chainId: targetChainId }).catch((error) => {
+      try {
+        switchChain({ chainId: targetChainId });
+      } catch (error) {
         console.error("Error auto-switching to Scroll:", error);
         // If switchChain fails, try using wallet.switchChain
         if (wallet.switchChain) {
@@ -312,7 +314,7 @@ export default function BuyPolicy() {
             console.error("Error switching chain via wallet:", err);
           });
         }
-      });
+      }
     }
   }, [authenticated, ready, address, wallet, chainId, targetChainId, switchChain]);
 
@@ -323,14 +325,21 @@ export default function BuyPolicy() {
 
       try {
       // Ensure decimals is a number (usdcDecimals might be BigInt)
-      const decimals = typeof usdcDecimals === 'bigint' ? Number(usdcDecimals) : (usdcDecimals || 6);
+      let decimals: number;
+      if (typeof usdcDecimals === 'bigint') {
+        decimals = Number(usdcDecimals);
+      } else if (typeof usdcDecimals === 'number') {
+        decimals = usdcDecimals;
+      } else {
+        decimals = 6; // Default to 6 decimals for USDC
+      }
       // USD to USDC: 1 USD = 1 USDC (same value, different decimals)
       // Ensure premium is a number (not BigInt)
       const premiumNum = typeof premium === 'bigint' ? Number(premium) : Number(premium);
       const premiumInUsdc = premiumNum; // Already in USD
       const premiumInWei = parseUnits(premiumInUsdc.toFixed(decimals), decimals);
 
-        if (allowance) {
+        if (allowance && typeof allowance === 'bigint') {
           setIsApproved(allowance >= premiumInWei);
         }
       } catch (error) {
@@ -538,7 +547,14 @@ export default function BuyPolicy() {
       }
 
       // Ensure decimals is a number (usdcDecimals might be BigInt)
-      const decimals = typeof usdcDecimals === 'bigint' ? Number(usdcDecimals) : (usdcDecimals || 6);
+      let decimals: number;
+      if (typeof usdcDecimals === 'bigint') {
+        decimals = Number(usdcDecimals);
+      } else if (typeof usdcDecimals === 'number') {
+        decimals = usdcDecimals;
+      } else {
+        decimals = 6; // Default to 6 decimals for USDC
+      }
       // USD to USDC: 1 USD = 1 USDC (same value, different decimals)
       // Ensure premium is a number (not BigInt)
       const premiumNum = typeof premium === 'bigint' ? Number(premium) : Number(premium);
@@ -552,7 +568,6 @@ export default function BuyPolicy() {
         abi: ERC20_ABI,
         functionName: "balanceOf",
         args: [address],
-        chainId: targetChainId,
       }) as bigint;
       console.log("Token balance:", tokenBalance.toString(), "Required:", premiumInWei.toString());
       console.log("Balance comparison:", { tokenBalance: tokenBalance.toString(), premiumInWei: premiumInWei.toString(), lessThan: tokenBalance < premiumInWei });
@@ -570,7 +585,7 @@ export default function BuyPolicy() {
         };
         
         let errorMessage: string;
-        if (tokenBalance === 0n && chainId !== targetChainId) {
+        if (tokenBalance === BigInt(0) && chainId !== targetChainId) {
           // User might have funds on Scroll (default chain)
           const currentChainName = chainNames[chainId] || `Chain ${chainId}`;
           errorMessage = validLanguage === "es"
@@ -611,23 +626,25 @@ export default function BuyPolicy() {
         functionName: "approve",
         args: [INSURANCE_CONTRACT_ADDRESS, premiumInWei],
         account: address,
-        chainId: targetChainId,
       });
       console.log("Gas estimate:", gasEstimate.toString());
 
-      const gasLimit = gasEstimate + (gasEstimate * 20n / 100n);
+      const gasLimit = gasEstimate + (gasEstimate * BigInt(20) / BigInt(100));
       const gasPrice = await publicClient.getGasPrice();
 
       console.log("Sending approval transaction");
-      const hash = await walletClient.writeContract({
+      if (!walletClient) {
+        throw new Error("Wallet client not available");
+      }
+      const hash = await (walletClient as any).writeContract({
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: "approve",
         args: [INSURANCE_CONTRACT_ADDRESS, premiumInWei],
         account: address,
-        gas: gasLimit,
-        maxFeePerGas: gasPrice * 2n,
-        maxPriorityFeePerGas: gasPrice / 10n,
+        gasLimit: gasLimit,
+        maxFeePerGas: gasPrice * BigInt(2),
+        maxPriorityFeePerGas: gasPrice / BigInt(10),
       });
       console.log("Approval transaction hash:", hash);
 
@@ -650,7 +667,7 @@ export default function BuyPolicy() {
         stack: error?.stack
       });
       
-      let errorMessage = buyT.toast.paymentError || (validLanguage === "es" ? "Error al procesar el pago" : "Error processing payment");
+      let errorMessage: string = buyT.toast.paymentError || (validLanguage === "es" ? "Error al procesar el pago" : "Error processing payment");
       
       if (error?.message?.includes("user rejected") || error?.message?.includes("User denied") || error?.message?.includes("rejected")) {
         errorMessage = validLanguage === "es" ? "Transacción cancelada por el usuario" : "Transaction cancelled by user";
@@ -846,7 +863,7 @@ export default function BuyPolicy() {
 
       // Validate ticket price is greater than 0
       const ticketPriceWei = BigInt(Math.floor(ticketPriceNum * 1e6));
-      if (ticketPriceWei <= 0n) {
+      if (ticketPriceWei <= BigInt(0)) {
         throw new Error("Ticket price must be greater than 0");
       }
 
@@ -881,22 +898,24 @@ export default function BuyPolicy() {
         functionName: "buyPolicy",
         args: [params],
         account: address,
-        chainId: targetChainId,
       });
 
-      const gasLimit = gasEstimate + (gasEstimate * 20n / 100n);
+      const gasLimit = gasEstimate + (gasEstimate * BigInt(20) / BigInt(100));
       const gasPrice = await publicClient.getGasPrice();
 
       // Call buyPolicy (nonpayable - USDC handled internally via transferFrom)
-      const hash = await walletClient.writeContract({
+      if (!walletClient) {
+        throw new Error("Wallet client not available");
+      }
+      const hash = await (walletClient as any).writeContract({
         address: INSURANCE_CONTRACT_ADDRESS,
         abi: INSURANCE_CONTRACT_ABI,
         functionName: "buyPolicy",
         args: [params],
         account: address,
-        gas: gasLimit,
-        maxFeePerGas: gasPrice * 2n,
-        maxPriorityFeePerGas: gasPrice / 10n,
+        gasLimit: gasLimit,
+        maxFeePerGas: gasPrice * BigInt(2),
+        maxPriorityFeePerGas: gasPrice / BigInt(10),
       });
 
       setTxHash(hash);
@@ -947,7 +966,7 @@ export default function BuyPolicy() {
       }
     } catch (error: any) {
       console.error("Error purchasing policy:", error);
-      let errorMessage = buyT.toast.paymentError;
+      let errorMessage: string = buyT.toast.paymentError;
       if (error?.message?.includes("insufficient")) {
         const premiumNum = typeof premium === 'bigint' ? Number(premium) : Number(premium);
         errorMessage = (buyT.toast.insufficientFunds || "Insufficient funds. You need at least {amount} USDC.").replace("{amount}", formatPremium(premiumNum));
