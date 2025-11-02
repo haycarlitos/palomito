@@ -1,6 +1,9 @@
 # 🛫 Palomito Insurance  
 **Parametric Flight Delay & Cancellation Coverage on EVM**
 
+SCROLL MAINNET: 0xC3498821e7b1eae0e47CBef225AC9D07E85E3E8B
+ARBITRUM TESTNET: 0x1dfdc9b9f30cce641635ff7f006e69d6df99485a
+
 ---
 
 ### 🌍 Problem
